@@ -5,7 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -43,7 +43,7 @@ func run(ctx context.Context, cancel context.CancelFunc, httpPort int, dataDir s
 	}
 	st, err := store.New(dataDir, logger)
 	if err != nil {
-		logger.Printf( "failed to create store: %v\n", err)
+		logger.Info(fmt.Sprintf("failed to create store: %v\n", err))
 		return 1
 	}
 
@@ -58,11 +58,11 @@ func run(ctx context.Context, cancel context.CancelFunc, httpPort int, dataDir s
 	defer cancel()
 
 	if err := s.shutdown(shutdownCtx); err != nil {
-		logger.Printf("failed to shutdown server: %v\n", err)
+		logger.Info(fmt.Sprintf("failed to shutdown server: %v\n", err))
 		return 1
 	}
 	if serverErr != nil {
-		logger.Printf("server error: %v\n", serverErr)
+		logger.Info(fmt.Sprintf("server error: %v\n", serverErr))
 		return 1
 	}
 	return 0
@@ -72,7 +72,7 @@ func run(ctx context.Context, cancel context.CancelFunc, httpPort int, dataDir s
 
 type closeFunc func() error
 
-func initializeLogger(logFile string) (*log.Logger, closeFunc, error){
+func initializeLogger(logFile string) (*slog.Logger, closeFunc, error){
 	if logFile != ""{
 		file, err := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 		if err != nil {
@@ -92,9 +92,9 @@ func initializeLogger(logFile string) (*log.Logger, closeFunc, error){
 			}
 			return nil
 		}
-		return log.New(multiW, "", log.LstdFlags),closer, nil
+		return slog.New(slog.NewTextHandler(multiW, nil)),closer, nil
 	}
-	return log.New(os.Stderr, "", log.LstdFlags), func() error {return nil}, nil
+	return slog.New(slog.NewTextHandler(os.Stderr, nil)), func() error {return nil}, nil
 }
 
 

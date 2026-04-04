@@ -1,16 +1,17 @@
 package main
 
-import(
-	"log"
+import (
+	"fmt"
+	"log/slog"
 	"net/http"
 )
 
 
-func requestLogger(logger *log.Logger) func(http.Handler) http.Handler {
+func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			next.ServeHTTP(w, r)
-			logger.Printf("Served request: %s %s\n", r.Method, r.URL.Path)
+			logger.Info(fmt.Sprintf("Served request: %s %s\n", r.Method, r.URL.Path))
 		})
 	}
 }
