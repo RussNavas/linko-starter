@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"log/slog"
 	"golang.org/x/crypto/bcrypt"
+	pkgerr "github.com/pkg/errors"
 )
 
 type contextKey string
@@ -56,7 +57,7 @@ func (s *server) validatePassword(password, stored string) (bool, error) {
 	}
 	if err != nil {
 
-		return false, err
+		return false, pkgerr.WithStack(err)
 	}
 	return true, nil
 }
