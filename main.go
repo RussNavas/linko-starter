@@ -1,22 +1,25 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"os/signal"
+	"slices"
 	"syscall"
 	"time"
-
-	pkgerr "github.com/pkg/errors"
 
 	"boot.dev/linko/internal/build"
 	"boot.dev/linko/internal/linkoerr"
 	"boot.dev/linko/internal/store"
+	tint "github.com/lmittmann/tint"
+	isatty "github.com/mattn/go-isatty"
+	pkgerr "github.com/pkg/errors"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 func main() {
@@ -87,43 +90,29 @@ type closeFunc func() error
 
 func initializeLogger(logFile string) (*slog.Logger, closeFunc, error) {
 	handlers := []slog.Handler{
-		slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		tint.NewHandler(os.Stderr, &tint.Options{
 			Level:       slog.LevelDebug,
 			ReplaceAttr: replaceAttr,
+			NoColor: (isatty.IsCygwinTerminal(os.Stderr.Fd()) || isatty.IsTerminal(os.Stderr.Fd())),
 		}),
 	}
-	closers := []closeFunc{}
-
+	var closer closeFunc
 	if logFile != "" {
-		file, err := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to open log file: %w", err)
+		logger := &lumberjack.Logger{
+			Filename:   logFile,
+			MaxSize:    1,
+			MaxAge:     28,
+			MaxBackups: 10,
+			LocalTime:  false,
+			Compress:   true,
 		}
-		bufferedFile := bufio.NewWriterSize(file, 8192)
-		close := func() error {
-			if err := bufferedFile.Flush(); err != nil {
-				return fmt.Errorf("failed to flush log file: %w", err)
-			}
-			if err := file.Close(); err != nil {
-				return fmt.Errorf("failed to close log file: %w", err)
-			}
-			return nil
-		}
-		handlers = append(handlers, slog.NewJSONHandler(bufferedFile, &slog.HandlerOptions{
-			Level:       slog.LevelInfo,
+		handlers = append(handlers, slog.NewJSONHandler(logger, &slog.HandlerOptions{
 			ReplaceAttr: replaceAttr,
 		}))
-		closers = append(closers, close)
+		closer = logger.Close
+
 	}
-	closer := func() error {
-		var errs []error
-		for _, close := range closers {
-			if err := close(); err != nil {
-				errs = append(errs, err)
-			}
-		}
-		return errors.Join(errs...)
-	}
+
 	return slog.New(slog.NewMultiHandler(handlers...)), closer, nil
 }
 
@@ -152,6 +141,7 @@ func errorAttrs(err error) []slog.Attr {
 }
 
 func replaceAttr(groups []string, a slog.Attr) slog.Attr {
+	var sensitiveKeys = []string{"password", "key", "apikey", "secret", "pin", "user","creditcardno"}
 	if a.Key == "error" {
 		err, ok := a.Value.Any().(error)
 		if !ok {
@@ -167,6 +157,27 @@ func replaceAttr(groups []string, a slog.Attr) slog.Attr {
 		}
 
 		return slog.GroupAttrs("error", errorAttrs(err)...)
+	}
+
+	if slices.Contains(sensitiveKeys, a.Key){
+		return slog.String(a.Key, "[REDACTED]")
+	}
+
+	if a.Value.Kind() == slog.KindString{
+		s := a.Value.String()
+
+		urlPtr, err := url.Parse(s)
+		if err != nil || urlPtr.User ==  nil{
+			return a
+		}
+
+		usr := urlPtr.User
+		usrName := usr.Username()
+		_, ok := usr.Password(); if ok{
+			urlPtr.User = url.UserPassword(usrName, "[REDACTED]")
+		}
+		return slog.String(a.Key, urlPtr.String())
+
 	}
 	return a
 }
