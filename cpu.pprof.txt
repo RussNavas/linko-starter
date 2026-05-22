@@ -1,0 +1,44 @@
+File: linko
+Type: cpu
+Time: 2026-05-21 11:40:57 PDT
+Duration: 30.13s, Total samples = 12.25s (40.65%)
+Showing nodes accounting for 12.12s, 98.94% of 12.25s total
+Dropped 80 nodes (cum <= 0.06s)
+      flat  flat%   sum%        cum   cum%
+    11.13s 90.86% 90.86%     11.49s 93.80%  golang.org/x/crypto/blowfish.encryptBlock
+     0.37s  3.02% 93.88%      0.37s  3.02%  runtime.asyncPreempt
+     0.32s  2.61% 96.49%     11.82s 96.49%  golang.org/x/crypto/blowfish.ExpandKey
+     0.13s  1.06% 97.55%      0.13s  1.06%  syscall.rawsyscalln
+     0.09s  0.73% 98.29%      0.09s  0.73%  runtime.memclrNoHeapPointers
+     0.08s  0.65% 98.94%      0.08s  0.65%  runtime.pthread_cond_signal
+         0     0% 98.94%     11.93s 97.39%  golang.org/x/crypto/bcrypt.GenerateFromPassword
+         0     0% 98.94%      0.10s  0.82%  golang.org/x/crypto/bcrypt.base64Encode
+         0     0% 98.94%     11.93s 97.39%  golang.org/x/crypto/bcrypt.bcrypt
+         0     0% 98.94%     11.82s 96.49%  golang.org/x/crypto/bcrypt.expensiveBlowfishSetup
+         0     0% 98.94%     11.93s 97.39%  golang.org/x/crypto/bcrypt.newFromPassword
+         0     0% 98.94%      0.08s  0.65%  internal/poll.(*FD).Write
+         0     0% 98.94%      0.10s  0.82%  internal/poll.ignoringEINTRIO (inline)
+         0     0% 98.94%     11.97s 97.71%  main.(*server).handlerRedirect
+         0     0% 98.94%     11.98s 97.80%  main.newServer.metricsMiddleware.func1
+         0     0% 98.94%     12.04s 98.29%  main.newServer.newServer.requestID.func2.func5
+         0     0% 98.94%     12.04s 98.29%  main.newServer.newServer.requestLogger.func3.func4
+         0     0% 98.94%     11.98s 97.80%  net/http.(*ServeMux).ServeHTTP
+         0     0% 98.94%     12.06s 98.45%  net/http.(*conn).serve
+         0     0% 98.94%     12.04s 98.29%  net/http.HandlerFunc.ServeHTTP
+         0     0% 98.94%     12.04s 98.29%  net/http.serverHandler.ServeHTTP
+         0     0% 98.94%      0.09s  0.73%  runtime.findRunnable
+         0     0% 98.94%      0.10s  0.82%  runtime.makeslice
+         0     0% 98.94%      0.11s   0.9%  runtime.mallocgc
+         0     0% 98.94%      0.10s  0.82%  runtime.mallocgcSmallNoscan
+         0     0% 98.94%      0.10s  0.82%  runtime.mcall
+         0     0% 98.94%      0.08s  0.65%  runtime.notewakeup
+         0     0% 98.94%      0.09s  0.73%  runtime.park_m
+         0     0% 98.94%      0.09s  0.73%  runtime.schedule
+         0     0% 98.94%      0.08s  0.65%  runtime.semawakeup
+         0     0% 98.94%      0.08s  0.65%  runtime.startm
+         0     0% 98.94%      0.07s  0.57%  runtime.systemstack
+         0     0% 98.94%      0.08s  0.65%  runtime.wakep
+         0     0% 98.94%      0.08s  0.65%  syscall.Write (inline)
+         0     0% 98.94%      0.13s  1.06%  syscall.syscall
+         0     0% 98.94%      0.13s  1.06%  syscall.syscalln
+         0     0% 98.94%      0.08s  0.65%  syscall.write

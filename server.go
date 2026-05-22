@@ -1,6 +1,7 @@
 package main
 
 import (
+	"time"
 	"context"
 	"errors"
 	"fmt"
@@ -11,6 +12,13 @@ import (
 
 	"boot.dev/linko/internal/store"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"net/http/pprof"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/trace"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
 type server struct {
@@ -22,10 +30,11 @@ type server struct {
 
 func newServer(logger *slog.Logger, store store.Store, port int, cancel context.CancelFunc) *server {
 	mux := http.NewServeMux()
-
+	wrappedMux := metricsMiddleware(mux)
+	otMux := otelhttp.NewHandler(wrappedMux, "http.server")
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
-		Handler: requestID()(requestLogger(logger)(mux)),
+		Handler: requestID()(requestLogger(logger)(otMux)),
 	}
 
 	s := &server{
@@ -34,6 +43,8 @@ func newServer(logger *slog.Logger, store store.Store, port int, cancel context.
 		cancel:     cancel,
 		logger: 	logger,
 	}
+	mux.Handle("GET /debug/pprof/", s.authMiddleware(http.HandlerFunc(pprof.Index)))
+	mux.Handle("GET /debug/pprof/profile", s.authMiddleware(http.HandlerFunc(pprof.Profile)))
 	mux.Handle("GET /metrics", promhttp.Handler())
 	mux.HandleFunc("GET /", s.handlerIndex)
 	mux.Handle("POST /api/login", s.authMiddleware(http.HandlerFunc(s.handlerLogin)))
@@ -76,4 +87,24 @@ func (s *server) handlerShutdown(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	go s.cancel()
+}
+
+var tracer trace.Tracer
+
+func initTracing(ctx context.Context) (func(context.Context) error, error) {
+	exp, err := otlptracegrpc.New(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exp,
+			sdktrace.WithBatchTimeout(2*time.Second),
+		),
+		sdktrace.WithResource(resource.Default()),
+	)
+
+	otel.SetTracerProvider(tp)
+	tracer = tp.Tracer("boot.dev/linko")
+	return tp.Shutdown, nil
 }

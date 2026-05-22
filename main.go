@@ -20,6 +20,7 @@ import (
 	isatty "github.com/mattn/go-isatty"
 	pkgerr "github.com/pkg/errors"
 	"gopkg.in/natefinch/lumberjack.v2"
+	_ "net/http/pprof"
 )
 
 func main() {
@@ -41,6 +42,18 @@ func run(ctx context.Context, cancel context.CancelFunc, httpPort int, dataDir s
 		fmt.Fprintf(os.Stderr, "failed to get hostname: %v\n", err)
 		return 1
 	}
+	closeTrace, err := initTracing(ctx)
+	if err != nil{
+		fmt.Fprintf(os.Stderr, "failed to init trace: %v\n", err)
+		return 1
+	}
+
+	defer func(){
+		if err := closeTrace(context.Background()); err != nil{
+			fmt.Fprintf(os.Stderr, "failed to close tracer: %v\n", err)
+		}
+		
+		}()
 
 	logger, closeLogger, err := initializeLogger(os.Getenv("LINKO_LOG_FILE"))
 	logger = logger.With(
